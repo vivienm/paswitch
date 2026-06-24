@@ -256,6 +256,90 @@ def test_pactl_backend_rejects_bad_json(monkeypatch: pytest.MonkeyPatch) -> None
         PactlBackend().list_sinks()
 
 
+def test_pactl_backend_null_description_falls_back_to_node_nick(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # pactl's JSON encoder turns non-ASCII descriptions into the literal
+    # "(null)" (older pa_json_escape rejects bytes > 0x7F). The properties
+    # block survives for ASCII values, so `node.nick` stands in for the label —
+    # no extra pactl call, no text scraping.
+    payload = json.dumps(
+        [
+            {
+                "index": 68,
+                "name": "alsa_output.pci-0000_00_1f.3.iec958-stereo",
+                "description": "(null)",
+                "properties": {
+                    "node.nick": "ALCS1200A Digital",
+                    "device.description": "Audio interne",
+                },
+            },
+            {
+                "index": 118,
+                "name": "alsa_output.pci-0000_03_00.1.hdmi-stereo-extra1",
+                "description": "Navi 31 HDMI/DP Audio Digital Stereo (HDMI 2)",
+                "properties": {"node.nick": "DELL U2719DC"},
+            },
+        ]
+    )
+    monkeypatch.setattr(PactlBackend, "_run", lambda self, *a: payload)
+    sinks = PactlBackend().list_sinks()
+    assert [(s.index, s.description) for s in sinks] == [
+        (68, "ALCS1200A Digital"),
+        (118, "Navi 31 HDMI/DP Audio Digital Stereo (HDMI 2)"),
+    ]
+
+
+def test_pactl_backend_null_description_falls_back_to_device_description(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # If `node.nick` is itself missing or "(null)", `device.description` is the
+    # next stop; only then does `Sink.label` fall back to the name.
+    payload = json.dumps(
+        [
+            {
+                "index": 0,
+                "name": "a",
+                "description": "(null)",
+                "properties": {"device.description": "Speakers"},
+            },
+            {
+                "index": 1,
+                "name": "b",
+                "description": "(null)",
+                "properties": {
+                    "node.nick": "(null)",
+                    "device.description": "(null)",
+                },
+            },
+        ]
+    )
+    monkeypatch.setattr(PactlBackend, "_run", lambda self, *a: payload)
+    sinks = PactlBackend().list_sinks()
+    assert [(s.name, s.description, s.label) for s in sinks] == [
+        ("a", "Speakers", "Speakers"),
+        ("b", "", "b"),  # nothing usable -> name fallback
+    ]
+
+
+def test_pactl_backend_no_extra_call_when_descriptions_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The common case (ASCII descriptions, or a pactl without the encoder bug)
+    # stays a single `pactl list sinks` invocation.
+    payload = json.dumps([{"index": 0, "name": "a", "description": "Speakers"}])
+    calls: list[tuple[str, ...]] = []
+
+    def fake_run(self: PactlBackend, *args: str) -> str:
+        calls.append(args)
+        return payload
+
+    monkeypatch.setattr(PactlBackend, "_run", fake_run)
+    sinks = PactlBackend().list_sinks()
+    assert [s.description for s in sinks] == ["Speakers"]
+    assert calls == [("--format=json", "list", "sinks")]
+
+
 def test_pactl_backend_missing_binary(monkeypatch: pytest.MonkeyPatch) -> None:
     def boom(*_: object, **__: object) -> object:
         raise FileNotFoundError

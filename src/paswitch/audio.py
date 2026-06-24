@@ -21,6 +21,13 @@ from .exclude import Exclude
 
 logger = logging.getLogger(__name__)
 
+# What pactl's JSON encoder emits for a string it cannot encode. Older
+# PulseAudio `pa_json_escape` rejects any byte > 0x7F as invalid, returns NULL,
+# and the caller prints it via `printf("%s", NULL)` — so a localized
+# description containing non-ASCII (e.g. "Stéréo") shows up as the literal
+# "(null)" instead of the real text.
+_NULL_DESCRIPTION = "(null)"
+
 
 class Direction(StrEnum):
     """Cycling direction for the default sink."""
@@ -101,6 +108,7 @@ class PactlBackend:
                 check=True,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
             )
         except FileNotFoundError as exc:
             raise BackendError(f"{self._pactl!r} not found in PATH") from exc
@@ -147,12 +155,32 @@ class PactlBackend:
         description = entry.get("description")
         if not isinstance(index, int) or not isinstance(name, str):
             raise BackendError("unexpected pactl output: malformed sink fields")
+        if not isinstance(description, str) or description == _NULL_DESCRIPTION:
+            description = PactlBackend._fallback_description(entry)
         return Sink(
             index=index,
             name=name,
-            description=description if isinstance(description, str) else "",
+            description=description,
             is_available=PactlBackend._port_available(entry),
         )
+
+    @staticmethod
+    def _fallback_description(entry: dict) -> str:
+        """A meaningful description pulled from properties when the top-level one
+        was lost to the JSON encoder's non-ASCII bug.
+
+        `node.nick` is preferred (it names the actual node, e.g. the connected
+        monitor for an HDMI output); `device.description` is a second chance if
+        that is itself "(null)" or absent.
+        """
+        props = entry.get("properties")
+        if not isinstance(props, dict):
+            return ""
+        for key in ("node.nick", "device.description"):
+            value = props.get(key)
+            if isinstance(value, str) and value != _NULL_DESCRIPTION:
+                return value
+        return ""
 
     @staticmethod
     def _port_available(entry: object) -> bool:
