@@ -1,0 +1,21 @@
+# Changes here will be overwritten by Copier. NEVER EDIT MANUALLY.
+
+_commit: da3e87d
+_src_path: https://github.com/vivienm/copier-python
+copyright_holder: Vivien Maisonneuve
+copyright_year: 2026
+doc_generator: none
+forge: github
+github_repo: paswitch
+github_user: vivienm
+license: MIT
+package_name: paswitch
+project_description: A tiny CLI audio output switcher for PipeWire and PulseAudio.
+project_name: paswitch
+project_type: application
+python_version: '3.13'
+script_name: paswitch
+test_runner: pytest
+type_checker: ty
+user_email: v.maisonneuve@gmail.com
+user_name: Vivien Maisonneuve

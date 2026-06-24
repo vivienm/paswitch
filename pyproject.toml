@@ -1,0 +1,58 @@
+[project]
+name = "paswitch"
+version = "0.1.0"
+description = "A tiny CLI audio output switcher for PipeWire and PulseAudio"
+readme = "README.md"
+authors = [
+    { name = "Vivien Maisonneuve", email = "v.maisonneuve@gmail.com" },
+]
+license = { text = "MIT" }
+classifiers = ["Private :: Do Not Upload"]
+requires-python = ">=3.13"
+dependencies = [
+    "typer-slim>=0.12.3",
+]
+
+[project.scripts]
+paswitch = "paswitch.__main__:app"
+
+[project.urls]
+Repository = "https://github.com/vivienm/paswitch"
+Issues = "https://github.com/vivienm/paswitch/issues"
+
+[build-system]
+requires = ["uv_build<0.12"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.1",
+    "pytest-randomly>=3.15.0",
+    "ruff>=0.5.4",
+    "rust-just>=1.43.1",
+    "ty>=0.0.7",
+    "typos>=1.30.0",
+]
+
+[tool.ruff.lint]
+extend-select = [
+    "I",  # isort
+    "RUF",  # Ruff
+    "ANN",  # Annotations
+]
+unfixable = [
+    "F401",  # unused imports
+]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--doctest-modules",
+    "--import-mode=importlib",
+]
+testpaths = [
+    "src",
+    "tests",
+]
+filterwarnings = [
+    "error",
+]
