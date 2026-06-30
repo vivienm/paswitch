@@ -107,7 +107,7 @@ def _fail(message: str, *, code: int, notify: bool = False) -> typer.Exit:
     if notify:
         # Non-transient so the error survives in the notification log, and
         # replace=False so it is not silently overwritten by the next routine
-        # switch notification (which reuses the shared --replace-id).
+        # switch notification (which reuses the shared replace_id).
         notification.send(
             message,
             urgency="critical",

@@ -16,7 +16,8 @@ uv run paswitch --help
 ```
 
 Needs `pactl` on `PATH` (shipped with `pipewire-pulse` or PulseAudio).
-`notify-send` is optional — without it, notifications are silently skipped.
+Desktop notifications go through the freedesktop D-Bus service; without a
+notification daemon (or a session bus) they are silently skipped.
 
 ## Usage
 
